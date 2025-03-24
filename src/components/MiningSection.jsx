@@ -57,7 +57,7 @@ export default function MiningSection({ provider, account, onMintSuccess }) {
         const rarity = ["Common", "Rare", "Epic", "Legendary"][
           event.args.rarity
         ];
-        setMintResult(`You mined a ${rarity} NFT!`);
+        setMintResult(`You minted a ${rarity} NFT!`);
 
         // Full-page celebration
         setShowConfetti(true);
@@ -162,7 +162,7 @@ export default function MiningSection({ provider, account, onMintSuccess }) {
               darkMode ? "text-white" : "text-gray-800"
             }`}
           >
-            Mine Your NFT
+            Mint Your NFT
           </h2>
 
           <div className="flex flex-col items-center">
@@ -180,11 +180,11 @@ export default function MiningSection({ provider, account, onMintSuccess }) {
             >
               {isMining ? (
                 <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                  Mining...
+                  Minting...
                 </motion.span>
               ) : (
                 <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                  Mine NFT
+                  Mint NFT
                 </motion.span>
               )}
 

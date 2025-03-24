@@ -53,7 +53,7 @@ export default function ConnectWallet({ setAccount, setProvider }) {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.4 }}
           >
-            Connect your wallet to start mining unique NFTs on Veldora
+            Connect your wallet to start minting unique NFTs on Veldora
           </motion.p>
         </div>
 
@@ -107,7 +107,7 @@ export default function ConnectWallet({ setAccount, setProvider }) {
               ),
               title: "Unique Rarities",
               description:
-                "Mine NFTs with different rarity levels from Common to Legendary",
+                "Mint NFTs with different rarity levels from Common to Legendary",
             },
             {
               icon: (
@@ -132,7 +132,7 @@ export default function ConnectWallet({ setAccount, setProvider }) {
                 </div>
               ),
               title: "Easy to start",
-              description: "Just connect your wallet and click mine",
+              description: "Just connect your wallet and click 'Mint NFT'",
             },
           ].map((feature, index) => (
             <motion.div
