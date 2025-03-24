@@ -15,45 +15,47 @@ export default function ConnectWallet({ setAccount, setProvider }) {
       const provider = new ethers.providers.Web3Provider(window.ethereum);
       setAccount(accounts[0]);
       setProvider(provider);
-    } else if (isMobile()) {
-      // Save connection intent to localStorage before redirecting
-      localStorage.setItem("walletConnectionPending", "true");
+    } // Mobile (No injected provider)
+    else if (isMobile()) {
+      // Step 1: Open MetaMask via deeplink
+      const universalLink = `https://metamask.app.link/dapp/${window.location.host}${window.location.pathname}`;
+      window.open(universalLink, "_blank"); // Open in new tab (some Android devices need this)
 
-      // Redirect to MetaMask app
-      window.location.href = `https://metamask.app.link/dapp/${window.location.hostname}${window.location.pathname}`;
+      // Step 2: Listen for MetaMask connection after redirect
+      listenForMobileConnection();
     } else {
       window.open("https://metamask.io/download.html", "_blank");
     }
   };
 
-  useEffect(() => {
-    const checkWalletOnLoad = async () => {
-      // Check if we just returned from a MetaMask redirect
-      if (localStorage.getItem("walletConnectionPending") === "true") {
-        localStorage.removeItem("walletConnectionPending");
-
-        // Check if MetaMask is now connected
-        if (window.ethereum) {
-          const accounts = await window.ethereum.request({
-            method: "eth_accounts",
-          });
-          if (accounts.length > 0) {
-            const provider = new ethers.providers.Web3Provider(window.ethereum);
-            setAccount(accounts[0]);
-            setProvider(provider);
-          }
-        }
-      }
-    };
-    if (isMobile()) {
-      checkWalletOnLoad();
-    }
-  }, []);
   // Helper function to detect mobile devices
   const isMobile = () => {
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
       navigator.userAgent
     );
+  };
+
+  // Helper: Detect MetaMask connection after mobile redirect
+  const listenForMobileConnection = () => {
+    const checkConnection = async () => {
+      if (window.ethereum) {
+        try {
+          const accounts = await window.ethereum.request({
+            method: "eth_requestAccounts",
+          });
+          const provider = new ethers.providers.Web3Provider(window.ethereum);
+          setAccount(accounts[0]);
+          setProvider(provider);
+        } catch (error) {
+          console.error("Mobile connection failed:", error);
+        }
+      } else {
+        // Retry after 1 second (MetaMask might take time to inject `window.ethereum`)
+        setTimeout(checkConnection, 1000);
+      }
+    };
+
+    checkConnection(); // Start polling
   };
 
   return (
