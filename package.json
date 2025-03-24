@@ -11,6 +11,7 @@
   "dependencies": {
     "@heroicons/react": "^2.2.0",
     "@material-tailwind/react": "^2.1.10",
+    "@walletconnect/ethereum-provider": "^2.19.1",
     "dotenv": "^16.4.7",
     "ethers": "^5.6.1",
     "heroicons": "^2.2.0",

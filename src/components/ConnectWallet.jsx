@@ -2,12 +2,13 @@ import { motion } from "framer-motion";
 import { useTheme } from "./ThemeContext";
 import { WalletIcon, ArrowRightIcon, ShieldIcon, AwardIcon } from "./Icons";
 import { ethers } from "ethers";
+import WalletConnectProvider from "@walletconnect/ethereum-provider";
 
 export default function ConnectWallet({ setAccount, setProvider }) {
   const { darkMode } = useTheme();
 
   const connectWallet = async () => {
-    // Check if MetaMask is installed (Desktop)
+    // Desktop MetaMask
     if (window.ethereum) {
       try {
         const accounts = await window.ethereum.request({
@@ -20,22 +21,25 @@ export default function ConnectWallet({ setAccount, setProvider }) {
         console.error("Error connecting:", error);
       }
     }
-    // Mobile handling (No injected window.ethereum)
+    // Mobile - WalletConnect + MetaMask
     else if (isMobile()) {
-      // Deeplink to MetaMask mobile app
-      window.location.href = `https://metamask.app.link/dapp/${window.location.hostname}${window.location.pathname}`;
+      const walletConnectProvider = new WalletConnectProvider({
+        rpc: {
+          1: "https://mainnet.infura.io/v3/YOUR_INFURA_KEY", // Ethereum
+          137: "https://polygon-rpc.com/", // Polygon, etc.
+        },
+      });
+
+      await walletConnectProvider.enable();
+      const provider = new ethers.providers.Web3Provider(walletConnectProvider);
+      const accounts = await provider.listAccounts();
+      setAccount(accounts[0]);
+      setProvider(provider);
     }
-    // No MetaMask installed (Desktop)
+    // No wallet installed
     else {
       window.open("https://metamask.io/download.html", "_blank");
     }
-  };
-
-  // Helper function to detect mobile devices
-  const isMobile = () => {
-    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-      navigator.userAgent
-    );
   };
 
   return (
