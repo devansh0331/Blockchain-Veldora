@@ -18,7 +18,8 @@ export default function ConnectWallet({ setAccount, setProvider }) {
     } // Mobile (No injected provider)
     else if (isMobile()) {
       // Step 1: Open MetaMask via deeplink
-
+      const universalLink = `https://metamask.app.link/dapp/${window.location.host}${window.location.pathname}`;
+      window.open(universalLink, "_blank"); // Open in new tab (some Android devices need this)
       alert(
         "Go to your metamask wallet app and browse the url: https://veldora-nft.vercel.app/"
       );
@@ -32,6 +33,29 @@ export default function ConnectWallet({ setAccount, setProvider }) {
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
       navigator.userAgent
     );
+  };
+
+  // Helper: Detect MetaMask connection after mobile redirect
+  const listenForMobileConnection = () => {
+    const checkConnection = async () => {
+      if (window.ethereum) {
+        try {
+          const accounts = await window.ethereum.request({
+            method: "eth_requestAccounts",
+          });
+          const provider = new ethers.providers.Web3Provider(window.ethereum);
+          setAccount(accounts[0]);
+          setProvider(provider);
+        } catch (error) {
+          console.error("Mobile connection failed:", error);
+        }
+      } else {
+        // Retry after 1 second (MetaMask might take time to inject `window.ethereum`)
+        setTimeout(checkConnection, 1000);
+      }
+    };
+
+    checkConnection(); // Start polling
   };
 
   return (
