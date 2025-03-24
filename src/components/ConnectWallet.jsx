@@ -7,6 +7,7 @@ export default function ConnectWallet({ setAccount, setProvider }) {
   const { darkMode } = useTheme();
 
   const connectWallet = async () => {
+    // Check if MetaMask is installed (Desktop)
     if (window.ethereum) {
       try {
         const accounts = await window.ethereum.request({
@@ -18,9 +19,23 @@ export default function ConnectWallet({ setAccount, setProvider }) {
       } catch (error) {
         console.error("Error connecting:", error);
       }
-    } else {
+    }
+    // Mobile handling (No injected window.ethereum)
+    else if (isMobile()) {
+      // Deeplink to MetaMask mobile app
+      window.location.href = `https://metamask.app.link/dapp/${window.location.hostname}${window.location.pathname}`;
+    }
+    // No MetaMask installed (Desktop)
+    else {
       window.open("https://metamask.io/download.html", "_blank");
     }
+  };
+
+  // Helper function to detect mobile devices
+  const isMobile = () => {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+      navigator.userAgent
+    );
   };
 
   return (
