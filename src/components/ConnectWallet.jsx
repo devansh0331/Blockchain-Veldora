@@ -25,8 +25,9 @@ export default function ConnectWallet({ setAccount, setProvider }) {
     else if (isMobile()) {
       const walletConnectProvider = new WalletConnectProvider({
         rpc: {
-          1: "https://mainnet.infura.io/v3/YOUR_INFURA_KEY", // Ethereum
-          137: "https://polygon-rpc.com/", // Polygon, etc.
+          11155111: `https://sepolia.infura.io/v3/${
+            import.meta.env.VITE_INFURA_KEY
+          }`, // Sepolia
         },
       });
 
