@@ -36,7 +36,7 @@ export default function NFTGallery({ provider, account }) {
   const { darkMode } = useTheme();
 
   const contractAddress = import.meta.env.VITE_CONTRACT_ADDRESS;
-  console.log(contractAddress);
+
   const contractABI = [
     "function getOwnedTokens(address owner) view returns (uint256[] memory)",
     "function tokenRarity(uint256 tokenId) view returns (uint256)",

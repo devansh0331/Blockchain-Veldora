@@ -8,6 +8,7 @@ export default function ConnectWallet({ setAccount, setProvider }) {
   const { darkMode } = useTheme();
 
   const connectWallet = async () => {
+    console.log("Infura, ", import.meta.env.VITE_INFURA_KEY);
     // Desktop MetaMask
     if (window.ethereum) {
       try {
