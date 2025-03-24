@@ -20,29 +20,6 @@ export default function ConnectWallet({ setAccount, setProvider }) {
     }
   };
 
-  // Helper: Detect MetaMask connection after mobile redirect
-  const listenForMobileConnection = () => {
-    const checkConnection = async () => {
-      if (window.ethereum) {
-        try {
-          const accounts = await window.ethereum.request({
-            method: "eth_requestAccounts",
-          });
-          const provider = new ethers.providers.Web3Provider(window.ethereum);
-          setAccount(accounts[0]);
-          setProvider(provider);
-        } catch (error) {
-          console.error("Mobile connection failed:", error);
-        }
-      } else {
-        // Retry after 1 second (MetaMask might take time to inject `window.ethereum`)
-        setTimeout(checkConnection, 1000);
-      }
-    };
-
-    checkConnection(); // Start polling
-  };
-
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6">
       {/* Hero Section */}
