@@ -2,46 +2,58 @@ import { motion } from "framer-motion";
 import { useTheme } from "./ThemeContext";
 import { WalletIcon, ArrowRightIcon, ShieldIcon, AwardIcon } from "./Icons";
 import { ethers } from "ethers";
-import WalletConnectProvider from "@walletconnect/ethereum-provider";
+import { useEffect } from "react";
 
 export default function ConnectWallet({ setAccount, setProvider }) {
   const { darkMode } = useTheme();
-
   const connectWallet = async () => {
-    console.log("Infura, ", import.meta.env.VITE_INFURA_KEY);
-    // Desktop MetaMask
     if (window.ethereum) {
-      try {
-        const accounts = await window.ethereum.request({
-          method: "eth_requestAccounts",
-        });
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        setAccount(accounts[0]);
-        setProvider(provider);
-      } catch (error) {
-        console.error("Error connecting:", error);
-      }
-    }
-    // Mobile - WalletConnect + MetaMask
-    else if (isMobile()) {
-      const walletConnectProvider = new WalletConnectProvider({
-        rpc: {
-          11155111: `https://sepolia.infura.io/v3/${
-            import.meta.env.VITE_INFURA_KEY
-          }`, // Sepolia
-        },
+      // Standard connection (desktop/mobile in-app browser)
+      const accounts = await window.ethereum.request({
+        method: "eth_requestAccounts",
       });
-
-      await walletConnectProvider.enable();
-      const provider = new ethers.providers.Web3Provider(walletConnectProvider);
-      const accounts = await provider.listAccounts();
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
       setAccount(accounts[0]);
       setProvider(provider);
-    }
-    // No wallet installed
-    else {
+    } else if (isMobile()) {
+      // Save connection intent to localStorage before redirecting
+      localStorage.setItem("walletConnectionPending", "true");
+
+      // Redirect to MetaMask app
+      window.location.href = `https://metamask.app.link/dapp/${window.location.hostname}${window.location.pathname}`;
+    } else {
       window.open("https://metamask.io/download.html", "_blank");
     }
+  };
+
+  useEffect(() => {
+    const checkWalletOnLoad = async () => {
+      // Check if we just returned from a MetaMask redirect
+      if (localStorage.getItem("walletConnectionPending") === "true") {
+        localStorage.removeItem("walletConnectionPending");
+
+        // Check if MetaMask is now connected
+        if (window.ethereum) {
+          const accounts = await window.ethereum.request({
+            method: "eth_accounts",
+          });
+          if (accounts.length > 0) {
+            const provider = new ethers.providers.Web3Provider(window.ethereum);
+            setAccount(accounts[0]);
+            setProvider(provider);
+          }
+        }
+      }
+    };
+    if (isMobile()) {
+      checkWalletOnLoad();
+    }
+  }, []);
+  // Helper function to detect mobile devices
+  const isMobile = () => {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+      navigator.userAgent
+    );
   };
 
   return (
