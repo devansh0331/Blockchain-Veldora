@@ -1,0 +1,58 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Smooth transitions for dark mode */
+html {
+  @apply transition-colors duration-300;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-gray-100 dark:bg-gray-800;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-300 dark:bg-gray-600 rounded-full;
+}
+
+/* Smooth theme transition for the toggle */
+.theme-toggle {
+  transition: all 0.3s ease;
+  backdrop-filter: blur(4px);
+}
+
+/* Glow effect in dark mode */
+.dark .theme-toggle {
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+}
+
+/* Default dark background for the whole app */
+@layer base {
+  body {
+    @apply bg-gray-900 text-gray-100;
+  }
+}
+
+/* Override for light mode */
+body:not(.dark) {
+  @apply bg-gray-50 text-gray-900;
+}
+
+* {
+  transition: background-color 0.3s ease, color 0.2s ease;
+}
+
+:root {
+  --veldora-gold: #d4af37;
+  --veldora-bronze: #cd7f32;
+  --veldora-brown: #5a3921;
+  --veldora-cream: #f5f0e6;
+}
+
+.dark {
+  --veldora-gold: #f5d090;
+  --veldora-bronze: #b88a57;
+}
