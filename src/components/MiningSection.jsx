@@ -30,7 +30,7 @@ export default function MiningSection({ provider, account, onMintSuccess }) {
   const contractAddress = import.meta.env.VITE_CONTRACT_ADDRESS;
   const contractABI = [
     "function mintNFT() external returns (uint256)",
-    "event NFTMinted(address indexed owner, uint256 indexed tokenId, uint256 rarity)",
+    "event NFTMinted(address indexed owner, uint256 indexed tokenId, uint8 rarity)",
   ];
 
   const mineNFT = async () => {
@@ -40,7 +40,7 @@ export default function MiningSection({ provider, account, onMintSuccess }) {
     }
 
     setIsMining(true);
-    setMintResult(null);
+    setMintResult("Minting in progress...");
     setShowConfetti(false);
 
     try {
@@ -51,29 +51,31 @@ export default function MiningSection({ provider, account, onMintSuccess }) {
         signer
       );
 
-      // Set a conservative gas limit to prevent estimation issues
       const tx = await contract.mintNFT({ gasLimit: 300000 });
       setMintResult("Transaction sent. Waiting for confirmation...");
 
-      const receipt = await tx.wait();
+      const receipt = await tx.wait(1);
 
-      if (receipt.status === 0) {
-        throw new Error("Transaction reverted");
-      }
+      // Simple event extraction - works with most providers
+      const event =
+        receipt.events?.find((e) => e.event === "NFTMinted") ||
+        (
+          await contract.queryFilter(
+            contract.filters.NFTMinted(),
+            receipt.blockHash
+          )
+        )[0];
 
-      const event = receipt.events?.find((e) => e.event === "NFTMinted");
       if (event) {
-        const rarityTypes = ["Common", "Rare", "Epic", "Legendary"];
-        const rarity = rarityTypes[event.args.rarity];
+        const rarity = ["Common", "Rare", "Epic", "Legendary"][
+          event.args.rarity
+        ];
         const tokenId = event.args.tokenId.toString();
-
-        setMintResult(`Success! You minted a ${rarity} NFT (ID: ${tokenId})`);
+        setMintResult(`Success! Minted ${rarity} NFT #${tokenId}`);
         setShowConfetti(true);
+        // Safe celebration with numeric rarity value
+        createFloatingCelebration(rarity);
 
-        // Visual celebration
-        createFloatingCelebration(event.args.rarity);
-
-        // Call success handler if provided
         if (onMintSuccess) {
           onMintSuccess({
             tokenId,
@@ -82,36 +84,26 @@ export default function MiningSection({ provider, account, onMintSuccess }) {
           });
         }
 
-        // Auto-hide confetti after 5 seconds
-        setTimeout(() => setShowConfetti(false), 5000);
+        setTimeout(() => setShowConfetti(false), 3000);
       } else {
-        setMintResult("Minting succeeded but no event was emitted");
+        setMintResult("Mint succeeded but couldn't read details");
       }
     } catch (error) {
+      setMintResult(
+        error.code === "ACTION_REJECTED"
+          ? "Transaction rejected"
+          : "Minting failed (see console)"
+      );
       console.error("Mining error:", error);
-      handleMintError(error);
     } finally {
       setIsMining(false);
     }
   };
 
-  const handleMintError = (error) => {
-    let errorMessage = "Minting failed. Please try again.";
-
-    if (error.code === 4001) {
-      errorMessage = "Transaction was rejected by your wallet";
-    } else if (error.message.includes("reverted")) {
-      errorMessage = "Transaction was rejected by the contract";
-    } else if (error.message.includes("insufficient funds")) {
-      errorMessage = "Insufficient ETH for gas fees";
-    }
-
-    setMintResult(errorMessage);
-  };
-
+  // Fixed celebration function
   const createFloatingCelebration = (rarity) => {
     const button = document.getElementById("mine-button");
-    if (!button) return;
+    if (!button || rarity === undefined) return;
 
     const buttonRect = button.getBoundingClientRect();
     const centerX = buttonRect.left + buttonRect.width / 2;
@@ -125,39 +117,54 @@ export default function MiningSection({ provider, account, onMintSuccess }) {
       "text-yellow-400",
     ];
 
-    // Create 20-30 floating particles
+    let safeRarity = 0;
+
+    // Validate rarity index
+    if (rarity.toString() == "Common") {
+      safeRarity = 0;
+    }
+    if (rarity.toString() == "Rare") {
+      safeRarity = 1;
+    }
+    if (rarity.toString() == "Epic") {
+      safeRarity = 2;
+    }
+    if (rarity.toString() == "Legendary") {
+      safeRarity = 3;
+    }
+
+    console.log(rarity.toString(), " ", safeRarity, " ", emojis[safeRarity]);
+
+    // Create particles
     for (let i = 0; i < 25; i++) {
       const particle = document.createElement("div");
-      particle.className = `fixed text-4xl z-50 ${colors[rarity]} pointer-events-none`;
-      particle.textContent = emojis[rarity];
+      particle.className = `fixed text-4xl z-50 ${colors[safeRarity]} pointer-events-none`;
+      particle.textContent = emojis[safeRarity];
       particle.style.left = `${centerX}px`;
       particle.style.top = `${centerY}px`;
       document.body.appendChild(particle);
 
-      // Animation properties
+      // Safer animation with valid easing
       const angle = Math.random() * Math.PI * 2;
       const distance = 100 + Math.random() * 200;
       const duration = 1000 + Math.random() * 1000;
-      const size = 0.5 + Math.random() * 0.5;
 
       particle.animate(
         [
           {
             transform: "translate(-50%, -50%) scale(1)",
             opacity: 1,
-            top: `${centerY}px`,
-            left: `${centerX}px`,
           },
           {
-            transform: `translate(-50%, -50%) scale(${size})`,
+            transform: `translate(${Math.cos(angle) * distance}px, ${
+              -Math.sin(angle) * distance
+            }px) scale(0.5)`,
             opacity: 0,
-            top: `${centerY - Math.sin(angle) * distance}px`,
-            left: `${centerX + Math.cos(angle) * distance}px`,
           },
         ],
         {
           duration,
-          easing: "cubic-bezier(0.1, 0.8, 0 0.2, 1)",
+          easing: "cubic-bezier(0.1, 0.8, 0.2, 1)", // Fixed syntax
         }
       ).onfinish = () => particle.remove();
     }
@@ -234,7 +241,8 @@ export default function MiningSection({ provider, account, onMintSuccess }) {
                   className={`p-4 rounded-lg max-w-md text-center ${
                     mintResult.startsWith("Success")
                       ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                      : mintResult.includes("sent")
+                      : mintResult.includes("sent") ||
+                        mintResult.includes("Minting in progress...")
                       ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
                       : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
                   }`}
