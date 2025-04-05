@@ -359,7 +359,7 @@ export default function StakedNFTGallery({ provider, account }) {
                             : "text-veldora-darkgold"
                         }`}
                       >
-                        Earning {[10, 20, 50, 100][nft.rarityLevel]} pts/day
+                        Earning {[10, 20, 50, 100][nft.rarityLevel]} pts/hr
                       </span>
                     </div>
                   </div>
