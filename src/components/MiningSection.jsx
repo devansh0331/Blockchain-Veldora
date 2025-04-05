@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useTheme } from "./ThemeContext.jsx";
 import { ethers } from "ethers";
 import Confetti from "react-confetti";
@@ -28,109 +28,138 @@ export default function MiningSection({ provider, account, onMintSuccess }) {
   }, []);
 
   const contractAddress = import.meta.env.VITE_CONTRACT_ADDRESS;
-
   const contractABI = [
     "function mintNFT() external returns (uint256)",
     "event NFTMinted(address indexed owner, uint256 indexed tokenId, uint256 rarity)",
   ];
 
   const mineNFT = async () => {
-    if (!provider || !account) return;
+    if (!provider || !account) {
+      setMintResult("Please connect your wallet");
+      return;
+    }
 
     setIsMining(true);
     setMintResult(null);
     setShowConfetti(false);
 
     try {
-      const signer = provider.getSigner();
+      const signer = await provider.getSigner();
       const contract = new ethers.Contract(
         contractAddress,
         contractABI,
         signer
       );
 
-      const tx = await contract.mintNFT();
+      // Set a conservative gas limit to prevent estimation issues
+      const tx = await contract.mintNFT({ gasLimit: 300000 });
+      setMintResult("Transaction sent. Waiting for confirmation...");
+
       const receipt = await tx.wait();
+
+      if (receipt.status === 0) {
+        throw new Error("Transaction reverted");
+      }
 
       const event = receipt.events?.find((e) => e.event === "NFTMinted");
       if (event) {
-        const rarity = ["Common", "Rare", "Epic", "Legendary"][
-          event.args.rarity
-        ];
-        setMintResult(`You minted a ${rarity} NFT!`);
+        const rarityTypes = ["Common", "Rare", "Epic", "Legendary"];
+        const rarity = rarityTypes[event.args.rarity];
+        const tokenId = event.args.tokenId.toString();
 
-        // Full-page celebration
+        setMintResult(`Success! You minted a ${rarity} NFT (ID: ${tokenId})`);
         setShowConfetti(true);
 
-        // Create floating NFTs that originate from the button
-        const button = document.getElementById("mine-button");
-        if (button) {
-          const buttonRect = button.getBoundingClientRect();
-          const centerX = buttonRect.left + buttonRect.width / 2;
-          const centerY = buttonRect.top + buttonRect.height / 2;
+        // Visual celebration
+        createFloatingCelebration(event.args.rarity);
 
-          const emojis = ["⭐", "✨", "💎", "🔥"];
-          const colors = [
-            "text-gray-400",
-            "text-blue-400",
-            "text-purple-400",
-            "text-yellow-400",
-          ];
-          const emoji = emojis[event.args.rarity];
-          const color = colors[event.args.rarity];
-
-          // Create multiple particles
-          for (let i = 0; i < 20; i++) {
-            const particle = document.createElement("div");
-            particle.className = `fixed text-4xl z-50 ${color}`;
-            particle.textContent = emoji;
-            particle.style.left = `${centerX}px`;
-            particle.style.top = `${centerY}px`;
-            particle.style.transform = "translate(-50%, -50%)";
-            document.body.appendChild(particle);
-
-            // Random angle and distance
-            const angle = Math.random() * Math.PI * 2;
-            const distance = 100 + Math.random() * 200;
-            const duration = 1500 + Math.random() * 1000;
-
-            const animation = particle.animate(
-              [
-                {
-                  transform: "translate(-50%, -50%) scale(1)",
-                  opacity: 1,
-                  top: `${centerY}px`,
-                  left: `${centerX}px`,
-                },
-                {
-                  transform: `translate(-50%, -50%) scale(0.5)`,
-                  opacity: 0,
-                  top: `${centerY - Math.sin(angle) * distance}px`,
-                  left: `${centerX + Math.cos(angle) * distance}px`,
-                },
-              ],
-              {
-                duration: duration,
-                easing: "cubic-bezier(0.1, 0.8, 0.2, 1)",
-              }
-            );
-
-            animation.onfinish = () => particle.remove();
-          }
+        // Call success handler if provided
+        if (onMintSuccess) {
+          onMintSuccess({
+            tokenId,
+            rarity,
+            transactionHash: receipt.transactionHash,
+          });
         }
 
-        // onMintSuccess?.();
-
-        // Auto-hide confetti after 3 seconds
-        setTimeout(() => {
-          setShowConfetti(false);
-        }, 3000);
+        // Auto-hide confetti after 5 seconds
+        setTimeout(() => setShowConfetti(false), 5000);
+      } else {
+        setMintResult("Minting succeeded but no event was emitted");
       }
     } catch (error) {
-      console.error("Mining failed:", error);
-      setMintResult("Mining failed. Please try again.");
+      console.error("Mining error:", error);
+      handleMintError(error);
     } finally {
       setIsMining(false);
+    }
+  };
+
+  const handleMintError = (error) => {
+    let errorMessage = "Minting failed. Please try again.";
+
+    if (error.code === 4001) {
+      errorMessage = "Transaction was rejected by your wallet";
+    } else if (error.message.includes("reverted")) {
+      errorMessage = "Transaction was rejected by the contract";
+    } else if (error.message.includes("insufficient funds")) {
+      errorMessage = "Insufficient ETH for gas fees";
+    }
+
+    setMintResult(errorMessage);
+  };
+
+  const createFloatingCelebration = (rarity) => {
+    const button = document.getElementById("mine-button");
+    if (!button) return;
+
+    const buttonRect = button.getBoundingClientRect();
+    const centerX = buttonRect.left + buttonRect.width / 2;
+    const centerY = buttonRect.top + buttonRect.height / 2;
+
+    const emojis = ["⭐", "✨", "💎", "🔥"];
+    const colors = [
+      "text-gray-400",
+      "text-blue-400",
+      "text-purple-400",
+      "text-yellow-400",
+    ];
+
+    // Create 20-30 floating particles
+    for (let i = 0; i < 25; i++) {
+      const particle = document.createElement("div");
+      particle.className = `fixed text-4xl z-50 ${colors[rarity]} pointer-events-none`;
+      particle.textContent = emojis[rarity];
+      particle.style.left = `${centerX}px`;
+      particle.style.top = `${centerY}px`;
+      document.body.appendChild(particle);
+
+      // Animation properties
+      const angle = Math.random() * Math.PI * 2;
+      const distance = 100 + Math.random() * 200;
+      const duration = 1000 + Math.random() * 1000;
+      const size = 0.5 + Math.random() * 0.5;
+
+      particle.animate(
+        [
+          {
+            transform: "translate(-50%, -50%) scale(1)",
+            opacity: 1,
+            top: `${centerY}px`,
+            left: `${centerX}px`,
+          },
+          {
+            transform: `translate(-50%, -50%) scale(${size})`,
+            opacity: 0,
+            top: `${centerY - Math.sin(angle) * distance}px`,
+            left: `${centerX + Math.cos(angle) * distance}px`,
+          },
+        ],
+        {
+          duration,
+          easing: "cubic-bezier(0.1, 0.8, 0 0.2, 1)",
+        }
+      ).onfinish = () => particle.remove();
     }
   };
 
@@ -141,9 +170,9 @@ export default function MiningSection({ provider, account, onMintSuccess }) {
           width={windowSize.width}
           height={windowSize.height}
           recycle={false}
-          numberOfPieces={200}
-          gravity={0.3}
-          initialVelocityY={5}
+          numberOfPieces={300}
+          gravity={0.2}
+          initialVelocityY={10}
           style={{ position: "fixed" }}
         />
       )}
@@ -170,35 +199,29 @@ export default function MiningSection({ provider, account, onMintSuccess }) {
               id="mine-button"
               disabled={isMining}
               onClick={mineNFT}
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
+              whileHover={!isMining ? { scale: 1.03 } : {}}
+              whileTap={!isMining ? { scale: 0.97 } : {}}
               className={`px-8 py-4 text-lg font-semibold rounded-full shadow-lg mb-6 ${
                 isMining
-                  ? "bg-gray-400"
+                  ? "bg-gray-400 cursor-not-allowed"
                   : "bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
-              } text-white relative overflow-hidden`}
+              } text-white relative overflow-hidden min-w-[150px]`}
             >
               {isMining ? (
-                <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                <div className="flex items-center justify-center gap-2">
+                  <motion.span
+                    animate={{ rotate: 360 }}
+                    transition={{
+                      repeat: Infinity,
+                      duration: 1,
+                      ease: "linear",
+                    }}
+                    className="inline-block h-5 w-5 border-2 border-white border-t-transparent rounded-full"
+                  />
                   Minting...
-                </motion.span>
+                </div>
               ) : (
-                <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                  Mint NFT
-                </motion.span>
-              )}
-
-              {isMining && (
-                <motion.div
-                  className="absolute inset-0 bg-white opacity-20"
-                  initial={{ x: "-100%" }}
-                  animate={{ x: "100%" }}
-                  transition={{
-                    repeat: Infinity,
-                    duration: 1.5,
-                    ease: "linear",
-                  }}
-                />
+                "Mint NFT"
               )}
             </motion.button>
 
@@ -208,10 +231,12 @@ export default function MiningSection({ provider, account, onMintSuccess }) {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0 }}
-                  className={`p-4 rounded-lg ${
-                    mintResult.includes("failed")
-                      ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
-                      : "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                  className={`p-4 rounded-lg max-w-md text-center ${
+                    mintResult.startsWith("Success")
+                      ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                      : mintResult.includes("sent")
+                      ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                      : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
                   }`}
                 >
                   {mintResult}

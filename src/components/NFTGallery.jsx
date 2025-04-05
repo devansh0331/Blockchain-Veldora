@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 import { useTheme } from "./ThemeContext.jsx";
 import { ethers } from "ethers";
+import { WalletIcon } from "./Icons";
 
 const rarityStyles = {
   Common: {
@@ -43,41 +44,11 @@ export default function NFTGallery({ provider, account }) {
     "event NFTMinted(address indexed owner, uint256 indexed tokenId, uint256 rarity)",
   ];
 
-  const fetchNFTs = async () => {
-    if (!provider || !account) return;
-
-    setLoading(true);
-    try {
-      const contract = new ethers.Contract(
-        contractAddress,
-        contractABI,
-        provider
-      );
-
-      // Get all token IDs owned by user
-      const tokenIds = await contract.getOwnedTokens(account);
-
-      // Get rarity for each token
-      const nftPromises = tokenIds.map(async (tokenId) => {
-        const rarity = (await contract.tokenRarity(tokenId)).toNumber();
-        return {
-          id: tokenId.toNumber(),
-          rarity: ["Common", "Rare", "Epic", "Legendary"][rarity],
-          rarityLevel: rarity,
-        };
-      });
-
-      const ownedNFTs = await Promise.all(nftPromises);
-      setNfts(ownedNFTs);
-    } catch (error) {
-      console.error("Failed to fetch NFTs:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    if (!provider || !account) return;
+    if (!provider || !account) {
+      setLoading(false);
+      return;
+    }
 
     const contract = new ethers.Contract(
       contractAddress,
@@ -97,6 +68,68 @@ export default function NFTGallery({ provider, account }) {
     };
   }, [provider, account]);
 
+  async function fetchNFTs() {
+    if (!provider || !account) return;
+
+    setLoading(true);
+    try {
+      const contract = new ethers.Contract(
+        contractAddress,
+        contractABI,
+        provider
+      );
+
+      const tokenIds = await contract.getOwnedTokens(account);
+      const nftData = await Promise.all(
+        tokenIds.map(async (id) => {
+          const rarityNum = await contract.tokenRarity(id);
+          const rarity = ["Common", "Rare", "Epic", "Legendary"][rarityNum];
+          return { id: id.toString(), rarity };
+        })
+      );
+
+      setNfts(nftData);
+    } catch (error) {
+      console.error("Error fetching NFTs:", error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (!account) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className={`rounded-xl p-6 text-center ${
+          darkMode ? "bg-gray-800/50" : "bg-white/50"
+        } backdrop-blur-sm border ${
+          darkMode ? "border-veldora-gold" : "border-gray-200"
+        }`}
+      >
+        <WalletIcon
+          className={`mx-auto w-12 h-12 mb-4 ${
+            darkMode ? "text-veldora-gold" : "text-gray-500"
+          }`}
+        />
+        <h3
+          className={`text-lg font-medium ${
+            darkMode ? "text-gray-300" : "text-gray-700"
+          }`}
+        >
+          Connect your wallet to view NFTs
+        </h3>
+        <p
+          className={`mt-2 text-sm ${
+            darkMode ? "text-gray-400" : "text-gray-500"
+          }`}
+        >
+          Your NFT collection will appear here after connecting
+        </p>
+      </motion.div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="flex justify-center py-12">
@@ -111,20 +144,35 @@ export default function NFTGallery({ provider, account }) {
 
   return (
     <section>
-      <h2 className="text-2xl font-bold mb-8 text-gray-800 dark:text-white">
-        Your NFT Collection
-      </h2>
+      <div className="flex justify-between items-center mb-8">
+        <h2 className="text-2xl font-bold text-gray-800 dark:text-white">
+          Your NFT Collection
+        </h2>
+        {account && (
+          <div
+            className={`text-sm ${
+              darkMode ? "text-gray-400" : "text-gray-500"
+            }`}
+          >
+            Connected: {`${account.slice(0, 6)}...${account.slice(-4)}`}
+          </div>
+        )}
+      </div>
 
       {nfts.length === 0 ? (
-        <div
-          className={`p-8 rounded-xl text-center ${
-            darkMode ? "bg-gray-800" : "bg-white"
-          } shadow`}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className={`p-6 rounded-xl text-center ${
+            darkMode ? "bg-gray-800/50" : "bg-white/50"
+          } backdrop-blur-sm border ${
+            darkMode ? "border-veldora-gold" : "border-gray-200"
+          }`}
         >
-          <p className="text-gray-600 dark:text-gray-300">
-            No NFTs found in your wallet.
+          <p className={`${darkMode ? "text-gray-300" : "text-gray-600"}`}>
+            No NFTs found in your wallet
           </p>
-        </div>
+        </motion.div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {nfts.map((nft) => {
