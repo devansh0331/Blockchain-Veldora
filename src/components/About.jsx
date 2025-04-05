@@ -155,7 +155,7 @@ export default function About() {
                 </li>
                 <li className="flex items-start">
                   <span className="mr-2">•</span>
-                  <span>Rewards accumulate every second</span>
+                  <span>Rewards accumulate every hour</span>
                 </li>
                 <li className="flex items-start">
                   <span className="mr-2">•</span>
