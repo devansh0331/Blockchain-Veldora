@@ -55,9 +55,9 @@ export default function Navbar({ account, setAccount, setProvider }) {
     <>
       {/* Enhanced Navbar with gradient background */}
       <motion.nav
-        initial={{ y: -100 }}
-        animate={{ y: 0 }}
-        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        initial={{ y: 0 }}
+        // animate={{ y: 0 }}
+        // transition={{ type: "spring", stiffness: 300, damping: 30 }}
         className={`fixed w-full z-50 transition-all duration-300 ${
           darkMode
             ? scrolled
