@@ -44,7 +44,7 @@ export default function Navbar({ account, setAccount, setProvider }) {
   const navItems = [
     { name: "Home", path: "/" },
     { name: "About", path: "/about" },
-    { name: "Mine", path: "/mine" },
+    { name: "Mint", path: "/mint" },
     { name: "Stake", path: "/stake" },
     { name: "Shop", path: "/shop" },
     { name: "Dashboard", path: "/dashboard" },
